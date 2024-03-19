@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      DB_HOST: mysql
+      DB_NAME: pp-assignment-db
+      DB_USER: pp-assignment-user
+      DB_PASSWORD: Pp-Assignment-pass
+    depends_on:
+      - mysql
+    command: npm run dev
+
+  mysql:
+    image: mysql:5.7
+    restart: always
+    environment:
+      MYSQL_DATABASE: pp-assignment-db
+      MYSQL_USER: pp-assignment
+      MYSQL_PASSWORD: Pp-Assignment-pass
+      MYSQL_ROOT_PASSWORD: Pp-Assignment-pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  mysql_data:
+

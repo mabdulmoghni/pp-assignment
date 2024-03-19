@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-deployment
+spec:
+  replicas: {{ .Values.deployment.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      serviceAccountName: {{ .Release.Name }}-service-account
+      containers:
+        - name: {{ .Release.Name }}-container
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          env:
+            - name: ENVIRONMENT
+              value: production
+            - name: PORT
+              value: "{{ .Values.environment.port }}"
+            - name: DB_NAME
+              value: "{{ .Values.environment.db_name }}"
+            - name: DB_HOST
+              value: "{{ .Values.environment.db_host }}"
+            - name: DB_USER
+              value: "{{ .Values.environment.db_user }}"
+            - name: DB_PASSWORD
+              value: "{{ .Values.environment.db_password }}"
+          ports:
+            - containerPort: 3000
+          imagePullPolicy: Always
+          resources:
+            limits:
+              cpu: {{ .Values.resources.limits.cpu }}
+              memory: {{ .Values.resources.limits.memory }}
+            requests:
+              cpu: {{ .Values.resources.requests.cpu }}
+              memory: {{ .Values.resources.requests.memory }}

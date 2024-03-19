@@ -1,0 +1,44 @@
+# values.yaml
+
+image:
+  repository: 979780086174.dkr.ecr.eu-west-1.amazonaws.com/pp-demo-ecr
+  tag: latest
+
+deployment:
+  replicas: 2
+
+environment:
+  port: 3000
+  db_host: "rds.pp-demo"
+  db_name: "ppdemodb"
+  db_user: "master"
+  db_password: ""
+
+service:
+  name: pp-client-ip-demo
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+  cpuTargetPercentage: 70
+
+ingress:
+  enabled: true
+  clientippath: /client-ip
+  clientiplistpath: /client-ip/list
+  pathType: Prefix
+
+rbac:
+  create: true

@@ -1,0 +1,20 @@
+{
+  "name": "pp-assignment",
+  "version": "1.0.0",
+  "description": "Node.js web application for save/retrieve clientIP",
+  "main": "server.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "dotenv": "^10.0.0", 
+    "express": "^4.17.1",
+    "sequelize": "^6.6.5",
+    "mysql2": "^2.3.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.12"
+  }
+}
+

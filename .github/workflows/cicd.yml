@@ -1,0 +1,112 @@
+name: Build-Push dashboard
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: eu-west-1
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Generate Docker metadata
+      id: meta-docker
+      uses: docker/metadata-action@v3
+      if: github.ref == 'refs/heads/main'
+      with:
+        images: |
+          979780086174.dkr.ecr.eu-west-1.amazonaws.com/pp-demo-ecr
+        tags: |
+          type=ref,event=tag
+          type=sha,prefix=,suffix=,format=short
+        flavor: |
+          latest=true
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+        
+    - name: Build and push 
+      uses: docker/build-push-action@v3
+      if: github.ref == 'refs/heads/main'
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta-docker.outputs.tags }}
+        labels: ${{ steps.meta-docker.outputs.labels }}
+
+  deploy_pp_client_ip_demo_helm_chart:
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: ${{ (github.event_name == 'push') && (github.ref == 'refs/heads/main') }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          repository: mabdulmoghni/pp-assignment
+          path: pp-assignment
+
+      - uses: actions/checkout@v3
+        with:
+          repository: pawaPay/application-helm
+          path: application-helm
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.10.0
+
+    # https://github.com/pawaPay/application-helm/ looks not ready for public use
+    # "docker.io/repository/image-name:v1.0.0": pull access denied, repository does not exist or may require authorization: server message: insufficient_scope: authorization failed    
+    #   - name: Add helm dependencies repositories
+    #     run: |
+    #       for dir in $(ls -d application-helm/application-helm/*/); do
+    #         helm dependency list $dir 2> /dev/null | tail +2 | head -n -1 | awk '{ print "helm repo add " $1 " " $3 }' | while read cmd; do $cmd; done
+    #       done
+    #       helm dependency update
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-1
+
+      - name: K8s-set-context to EKS testing cluster
+        uses: azure/k8s-set-context@v1
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBECONFIG_EKS}}
+
+    # https://github.com/pawaPay/application-helm/ looks not ready for public use
+    # "docker.io/repository/image-name:v1.0.0": pull access denied, repository does not exist or may require authorization: server message: insufficient_scope: authorization failed    
+    #   - name: Deploy pp-application-helm to EKS cluster
+    #     run: |
+    #       helm upgrade pawapay-application-helm application-helm/application-helm/ --install --create-namespace --namespace=argocd --wait  --atomic
+
+      - name: Deploy client-ip-app-demo to EKS cluster
+        run: |
+          helm upgrade pp-client-ip-demo pp-assignment/helm/pp-client-ip-demo --install --wait --namespace=default --set=app.name=pp-client-ip-demo --set-string "environment.db_password=${{ secrets.PP_DB_PASS }}" --atomic
+          sleep 30
+          kubectl get pods -A
+          kubectl get ingress -A
